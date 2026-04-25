@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alma - Briefing Criativo</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Ícone para a aba (opcional) -->
+    <link rel="icon" type="image/png" href="assets/favicon.png"> 
+</head>
+<body>
+
+    <header>
+        <h1>ALMA</h1>
+        <p>Briefing Criativo</p>
+        <span id="status-msg" class="status">Rascunho salvo automaticamente</span>
+    </header>
+
+    <main id="app">
+        <!-- O formulário será injetado aqui pelo JS -->
+    </main>
+
+    <footer>
+        <button id="btn-submit" class="btn-submit">Enviar Briefing</button>
+    </footer>
+
+    <!-- Firebase SDKs (Módulos essenciais) -->
+    <script type="module" src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js"></script>
+    
+    <!-- Nossa Lógica -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>
