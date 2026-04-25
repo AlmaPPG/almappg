@@ -1,14 +1,14 @@
 // ==========================================
-// 1. CONFIGURAÇÃO DO FIREBASE (SUA PARTE)
-// ==========================================// Imports CORRETOS para navegador (sem bundler)
+// 1. IMPORTS (CDN - Não altere)
+// ==========================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// ==========================================
+// 2. CONFIGURAÇÃO FIREBASE (SUAS CHAVES)
+// ==========================================
 const firebaseConfig = {
   apiKey: "AIzaSyCf8UPYEekSfwJkTgWTojvAvli473ip3oM",
   authDomain: "alma-briefing.firebaseapp.com",
@@ -19,110 +19,153 @@ const firebaseConfig = {
   measurementId: "G-N1629LM322"
 };
 
-// Initialize Firebase
+// Inicializa Firebase
 const app = initializeApp(firebaseConfig);
-// const analytics = getAnalytics(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+const auth = getAuth(app); // <--- Declarado globalmente
 
-// Variável global para o ID do cliente (anônimo)
-let userId = null;
+let userId = null; // Será preenchido no login
 
 // ==========================================
-// 2. QUESTÕES (EDITE AQUI PARA MUDAR O FORM)
+// 3. CONFIGURAÇÃO DAS QUESTÕES (EDITE AQUI)
 // ==========================================
 const QUESTIONS = [
     { id: 'estrategia', title: '01. Estratégia', items: [
         { id: 'q1', label: 'Público-alvo', type: 'text' },
         { id: 'q2', label: 'Objetivos', type: 'text-long' },
-        { id: 'q3', label: 'Concorrência', type: 'file' } // Exemplo com arquivo
+        { id: 'q3', label: 'Concorrência', type: 'file' }
     ]},
-    // Adicione mais seções aqui...
+    { id: 'marca', title: '02. Marca', items: [
+        { id: 'q4', label: 'Valores', type: 'text' },
+        { id: 'q5', label: 'Personalidade', type: 'text' },
+        { id: 'q6', label: 'Posicionamento', type: 'text' }
+    ]},
+    { id: 'visual', title: '03. Visual', items: [
+        { id: 'q7', label: 'Cores', type: 'text' },
+        { id: 'q8', label: 'Tipografia', type: 'text' },
+        { id: 'q9', label: 'Referências', type: 'file' }
+    ]}
+    // ... adicione o restante das 21 questões aqui
 ];
 
 // ==========================================
-// 3. INICIALIZAÇÃO E RENDERIZAÇÃO
+// 4. INICIALIZAÇÃO
 // ==========================================
 async function init() {
     const btn = document.getElementById('btn-submit');
-    btn.textContent = 'Carregando...';
+    if(btn) btn.textContent = 'Conectando...';
     
     try {
-        // Login Anônimo (permite salvar rascunhos sem conta)
+        // Login anônimo para identificar o rascunho
         const cred = await signInAnonymously(auth);
         userId = cred.user.uid;
-        console.log("Usuário ID:", userId);
+        console.log("✅ Firebase conectado. User ID:", userId);
         
         renderForm();
-        loadDraft(); // Carrega dados salvos
-        btn.textContent = 'Enviar Briefing';
+        loadLocalDraft();
+        
+        if(btn) {
+            btn.textContent = 'Enviar Briefing';
+            btn.disabled = false;
+        }
     } catch (error) {
-        console.error("Erro Firebase:", error);
-        btn.textContent = 'Erro ao conectar';
+        console.error("❌ Erro Firebase:", error);
+        if(btn) {
+            btn.textContent = 'Erro de conexão';
+            btn.disabled = true;
+        }
     }
 }
 
+// ==========================================
+// 5. RENDERIZAÇÃO DINÂMICA
+// ==========================================
 function renderForm() {
     const app = document.getElementById('app');
+    if (!app) return;
     app.innerHTML = '';
 
     QUESTIONS.forEach(section => {
+        // Título da seção
         const secTitle = document.createElement('h2');
         secTitle.className = 'section-title';
         secTitle.textContent = section.title;
         app.appendChild(secTitle);
 
+        // Itens da seção
         section.items.forEach(item => {
             const card = document.createElement('div');
             card.className = 'question-card';
             
+            let inputHTML = '';
+            if (item.type === 'text') {
+                inputHTML = `<input type="text" id="${item.id}" data-type="text" placeholder="Responda brevemente...">`;
+            } else if (item.type === 'text-long') {
+                inputHTML = `<textarea id="${item.id}" data-type="text" placeholder="Descreva com detalhes..."></textarea>`;
+            } else if (item.type === 'file') {
+                inputHTML = `
+                    <div class="file-area" id="area-${item.id}">
+                        <div class="file-row">
+                            <input type="file" data-file-for="${item.id}">
+                            <button type="button" class="btn-icon" onclick="addFile('${item.id}')">+</button>
+                        </div>
+                    </div>`;
+            }
+
             card.innerHTML = `
                 <div class="q-header">
                     <span class="q-num">${item.id.toUpperCase()}</span>
                     <span class="q-label">${item.label}</span>
                 </div>
-                <div class="input-wrapper">
-                    ${item.type === 'text' ? `<input type="text" id="${item.id}" data-type="text" placeholder="Responda...">` : ''}
-                    ${item.type === 'text-long' ? `<textarea id="${item.id}" data-type="text" placeholder="Descreva..."></textarea>` : ''}
-                    ${item.type === 'file' ? `
-                        <div class="file-area" id="area-${item.id}">
-                            <div class="file-row"><input type="file" data-file-for="${item.id}"><button class="btn-icon" onclick="addFile('${item.id}')">+</button></div>
-                        </div>
-                    ` : ''}
-                </div>
+                <div class="input-wrapper">${inputHTML}</div>
             `;
             app.appendChild(card);
         });
     });
 
-    // Auto-save ao digitar
+    // Auto-save para campos de texto
     document.querySelectorAll('input[type="text"], textarea').forEach(el => {
         el.addEventListener('input', (e) => saveLocalDraft(e.target.id, e.target.value));
     });
 }
 
 // ==========================================
-// 4. FUNÇÕES DE ARQUIVO
+// 6. FUNÇÃO GLOBAL PARA ADICIONAR ARQUIVOS
 // ==========================================
 window.addFile = function(qId) {
     const area = document.getElementById(`area-${qId}`);
+    if (!area) return;
+    
     const row = document.createElement('div');
     row.className = 'file-row';
-    row.innerHTML = `<input type="file" data-file-for="${qId}"><button class="btn-icon remove" onclick="this.parentElement.remove()">×</button>`;
+    row.innerHTML = `
+        <input type="file" data-file-for="${qId}">
+        <button type="button" class="btn-icon remove" onclick="this.parentElement.remove()">×</button>
+    `;
     area.appendChild(row);
 };
 
 // ==========================================
-// 5. LÓGICA DE SALVAR / CARREGAR
+// 7. AUTO-SAVE LOCAL (TEXTO APENAS)
 // ==========================================
-// Salva texto no LocalStorage (Rápido/Offline)
 function saveLocalDraft(id, value) {
+    if (!userId) return;
     const drafts = JSON.parse(localStorage.getItem('alma_draft') || '{}');
     drafts[userId] = drafts[userId] || {};
     drafts[userId][id] = value;
     localStorage.setItem('alma_draft', JSON.stringify(drafts));
+    
+    // Feedback visual
+    const msg = document.getElementById('status-msg');
+    if (msg) {
+        msg.classList.add('visible');
+        setTimeout(() => msg.classList.remove('visible'), 2000);
+    }
 }
 
-// Carrega texto do LocalStorage
-function loadDraft() {
+function loadLocalDraft() {
+    if (!userId) return;
     const drafts = JSON.parse(localStorage.getItem('alma_draft') || '{}');
     const userData = drafts[userId] || {};
     
@@ -132,25 +175,39 @@ function loadDraft() {
     });
 }
 
-// Envia TUDO para o Firebase
-document.getElementById('btn-submit').addEventListener('click', async () => {
+// ==========================================
+// 8. ENVIO PARA FIREBASE
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
     const btn = document.getElementById('btn-submit');
+    if (btn) {
+        btn.addEventListener('click', handleSubmit);
+    }
+    // Inicia o app
+    init();
+});
+
+async function handleSubmit() {
+    const btn = document.getElementById('btn-submit');
+    if (!btn || !userId) return;
+    
     btn.disabled = true;
     btn.textContent = 'Enviando...';
 
     try {
         const formData = {
             timestamp: new Date().toISOString(),
+            userId: userId,
             texts: {},
             files: []
         };
 
-        // 1. Coletar Textos
+        // Coletar textos
         document.querySelectorAll('[data-type="text"]').forEach(el => {
             formData.texts[el.id] = el.value;
         });
 
-        // 2. Upload de Arquivos
+        // Upload de arquivos
         const fileInputs = document.querySelectorAll('input[type="file"]');
         for (const input of fileInputs) {
             if (input.files.length > 0) {
@@ -162,25 +219,27 @@ document.getElementById('btn-submit').addEventListener('click', async () => {
                 await uploadBytes(storageRef, file);
                 const url = await getDownloadURL(storageRef);
                 
-                formData.files.push({ questionId: qId, url: url, name: file.name });
+                formData.files.push({ 
+                    questionId: qId, 
+                    url: url, 
+                    name: file.name,
+                    size: file.size 
+                });
             }
         }
 
-        // 3. Salvar no Banco (Firestore)
+        // Salvar no Firestore
         const docRef = doc(db, "briefings", userId);
-        await setDoc(docRef, formData, { merge: true }); // Merge para não apagar se atualizar
+        await setDoc(docRef, formData, { merge: true });
 
         alert('✅ Briefing enviado com sucesso!');
-        localStorage.removeItem('alma_draft'); // Limpa rascunho local
+        localStorage.removeItem('alma_draft');
         location.reload();
 
     } catch (error) {
-        console.error(error);
-        alert('❌ Erro ao enviar: ' + error.message);
+        console.error("Erro ao enviar:", error);
+        alert('❌ Erro: ' + error.message);
         btn.disabled = false;
-        btn.textContent = 'Tentar Novamente';
+        btn.textContent = 'Tentar novamente';
     }
-});
-
-// Iniciar
-init();
+}
