@@ -1,13 +1,12 @@
 // ==========================================
-// 1. IMPORTS (CDN - Não altere)
+// 1. IMPORTS (CDN)
 // ==========================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
 // ==========================================
-// 2. CONFIGURAÇÃO FIREBASE (SUAS CHAVES)
+// 2. CONFIG FIREBASE (SUAS CHAVES)
 // ==========================================
 const firebaseConfig = {
   apiKey: "AIzaSyCf8UPYEekSfwJkTgWTojvAvli473ip3oM",
@@ -19,16 +18,18 @@ const firebaseConfig = {
   measurementId: "G-N1629LM322"
 };
 
-// Inicializa Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const auth = getAuth(app); // <--- Declarado globalmente
 
-let userId = null; // Será preenchido no login
+// ID único do rascunho (persiste no navegador)
+const DRAFT_KEY = 'alma_draft_id';
+let draftId = localStorage.getItem(DRAFT_KEY) || 
+             (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+localStorage.setItem(DRAFT_KEY, draftId);
 
 // ==========================================
-// 3. CONFIGURAÇÃO DAS QUESTÕES (EDITE AQUI)
+// 3. QUESTÕES (EDITE AQUI)
 // ==========================================
 const QUESTIONS = [
     { id: 'estrategia', title: '01. Estratégia', items: [
@@ -46,200 +47,108 @@ const QUESTIONS = [
         { id: 'q8', label: 'Tipografia', type: 'text' },
         { id: 'q9', label: 'Referências', type: 'file' }
     ]}
-    // ... adicione o restante das 21 questões aqui
+    // Complete até a q21...
 ];
 
 // ==========================================
-// 4. INICIALIZAÇÃO
-// ==========================================
-async function init() {
-    const btn = document.getElementById('btn-submit');
-    if(btn) btn.textContent = 'Conectando...';
-    
-    try {
-        // Login anônimo para identificar o rascunho
-        const cred = await signInAnonymously(auth);
-        userId = cred.user.uid;
-        console.log("✅ Firebase conectado. User ID:", userId);
-        
-        renderForm();
-        loadLocalDraft();
-        
-        if(btn) {
-            btn.textContent = 'Enviar Briefing';
-            btn.disabled = false;
-        }
-    } catch (error) {
-        console.error("❌ Erro Firebase:", error);
-        if(btn) {
-            btn.textContent = 'Erro de conexão';
-            btn.disabled = true;
-        }
-    }
-}
-
-// ==========================================
-// 5. RENDERIZAÇÃO DINÂMICA
+// 4. RENDERIZAÇÃO
 // ==========================================
 function renderForm() {
-    const app = document.getElementById('app');
-    if (!app) return;
-    app.innerHTML = '';
+    const appEl = document.getElementById('app');
+    appEl.innerHTML = '';
+    const saved = JSON.parse(localStorage.getItem(`alma_data_${draftId}`) || '{}');
 
-    QUESTIONS.forEach(section => {
-        // Título da seção
-        const secTitle = document.createElement('h2');
-        secTitle.className = 'section-title';
-        secTitle.textContent = section.title;
-        app.appendChild(secTitle);
+    QUESTIONS.forEach(sec => {
+        const h2 = document.createElement('h2');
+        h2.className = 'section-title';
+        h2.textContent = sec.title;
+        appEl.appendChild(h2);
 
-        // Itens da seção
-        section.items.forEach(item => {
+        sec.items.forEach(q => {
             const card = document.createElement('div');
             card.className = 'question-card';
             
-            let inputHTML = '';
-            if (item.type === 'text') {
-                inputHTML = `<input type="text" id="${item.id}" data-type="text" placeholder="Responda brevemente...">`;
-            } else if (item.type === 'text-long') {
-                inputHTML = `<textarea id="${item.id}" data-type="text" placeholder="Descreva com detalhes..."></textarea>`;
-            } else if (item.type === 'file') {
-                inputHTML = `
-                    <div class="file-area" id="area-${item.id}">
-                        <div class="file-row">
-                            <input type="file" data-file-for="${item.id}">
-                            <button type="button" class="btn-icon" onclick="addFile('${item.id}')">+</button>
-                        </div>
-                    </div>`;
-            }
+            let input = '';
+            if(q.type === 'text') input = `<input type="text" id="${q.id}" data-type="text" placeholder="Responda...">`;
+            if(q.type === 'text-long') input = `<textarea id="${q.id}" data-type="text" placeholder="Descreva..."></textarea>`;
+            if(q.type === 'file') input = `<div class="file-area" id="area-${q.id}"><div class="file-row"><input type="file" data-file-for="${q.id}"><button type="button" class="btn-icon" onclick="addFile('${q.id}')">+</button></div></div>`;
 
             card.innerHTML = `
-                <div class="q-header">
-                    <span class="q-num">${item.id.toUpperCase()}</span>
-                    <span class="q-label">${item.label}</span>
-                </div>
-                <div class="input-wrapper">${inputHTML}</div>
-            `;
-            app.appendChild(card);
+                <div class="q-header"><span class="q-num">${q.id.toUpperCase()}</span><span class="q-label">${q.label}</span></div>
+                <div class="input-wrapper">${input}</div>`;
+            appEl.appendChild(card);
         });
     });
 
-    // Auto-save para campos de texto
-    document.querySelectorAll('input[type="text"], textarea').forEach(el => {
-        el.addEventListener('input', (e) => saveLocalDraft(e.target.id, e.target.value));
+    // Restaura valores salvos
+    Object.keys(saved).forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.value = saved[id];
+    });
+
+    // Auto-save
+    document.querySelectorAll('input, textarea').forEach(el => {
+        el.addEventListener('input', saveDraft);
     });
 }
 
+function saveDraft() {
+    const data = {};
+    document.querySelectorAll('[data-type="text"]').forEach(el => data[el.id] = el.value);
+    localStorage.setItem(`alma_data_${draftId}`, JSON.stringify(data));
+    
+    const msg = document.getElementById('status-msg');
+    if(msg) { msg.classList.add('visible'); setTimeout(() => msg.classList.remove('visible'), 2000); }
+}
+
 // ==========================================
-// 6. FUNÇÃO GLOBAL PARA ADICIONAR ARQUIVOS
+// 5. ARQUIVOS DINÂMICOS
 // ==========================================
 window.addFile = function(qId) {
     const area = document.getElementById(`area-${qId}`);
-    if (!area) return;
-    
     const row = document.createElement('div');
     row.className = 'file-row';
-    row.innerHTML = `
-        <input type="file" data-file-for="${qId}">
-        <button type="button" class="btn-icon remove" onclick="this.parentElement.remove()">×</button>
-    `;
+    row.innerHTML = `<input type="file" data-file-for="${qId}"><button type="button" class="btn-icon remove" onclick="this.parentElement.remove()">×</button>`;
     area.appendChild(row);
 };
 
 // ==========================================
-// 7. AUTO-SAVE LOCAL (TEXTO APENAS)
+// 6. ENVIO
 // ==========================================
-function saveLocalDraft(id, value) {
-    if (!userId) return;
-    const drafts = JSON.parse(localStorage.getItem('alma_draft') || '{}');
-    drafts[userId] = drafts[userId] || {};
-    drafts[userId][id] = value;
-    localStorage.setItem('alma_draft', JSON.stringify(drafts));
+document.addEventListener('DOMContentLoaded', async () => {
+    renderForm();
     
-    // Feedback visual
-    const msg = document.getElementById('status-msg');
-    if (msg) {
-        msg.classList.add('visible');
-        setTimeout(() => msg.classList.remove('visible'), 2000);
-    }
-}
+    document.getElementById('btn-submit').addEventListener('click', async () => {
+        const btn = document.getElementById('btn-submit');
+        btn.disabled = true;
+        btn.textContent = 'Enviando...';
 
-function loadLocalDraft() {
-    if (!userId) return;
-    const drafts = JSON.parse(localStorage.getItem('alma_draft') || '{}');
-    const userData = drafts[userId] || {};
-    
-    Object.keys(userData).forEach(key => {
-        const el = document.getElementById(key);
-        if (el) el.value = userData[key];
-    });
-}
-
-// ==========================================
-// 8. ENVIO PARA FIREBASE
-// ==========================================
-document.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('btn-submit');
-    if (btn) {
-        btn.addEventListener('click', handleSubmit);
-    }
-    // Inicia o app
-    init();
-});
-
-async function handleSubmit() {
-    const btn = document.getElementById('btn-submit');
-    if (!btn || !userId) return;
-    
-    btn.disabled = true;
-    btn.textContent = 'Enviando...';
-
-    try {
-        const formData = {
-            timestamp: new Date().toISOString(),
-            userId: userId,
-            texts: {},
-            files: []
-        };
-
-        // Coletar textos
-        document.querySelectorAll('[data-type="text"]').forEach(el => {
-            formData.texts[el.id] = el.value;
-        });
-
-        // Upload de arquivos
-        const fileInputs = document.querySelectorAll('input[type="file"]');
-        for (const input of fileInputs) {
-            if (input.files.length > 0) {
-                const file = input.files[0];
-                const qId = input.dataset.fileFor;
-                const path = `briefings/${userId}/${qId}/${Date.now()}_${file.name}`;
-                
-                const storageRef = ref(storage, path);
-                await uploadBytes(storageRef, file);
-                const url = await getDownloadURL(storageRef);
-                
-                formData.files.push({ 
-                    questionId: qId, 
-                    url: url, 
-                    name: file.name,
-                    size: file.size 
-                });
+        try {
+            const payload = { draftId, timestamp: new Date().toISOString(), texts: {}, files: [] };
+            
+            // Textos
+            document.querySelectorAll('[data-type="text"]').forEach(el => payload.texts[el.id] = el.value);
+            
+            // Arquivos
+            for(const input of document.querySelectorAll('input[type="file"]')) {
+                if(input.files.length > 0) {
+                    const file = input.files[0];
+                    const path = `briefings/${draftId}/${input.dataset.fileFor}/${Date.now()}_${file.name}`;
+                    const sRef = ref(storage, path);
+                    await uploadBytes(sRef, file);
+                    payload.files.push({ qId: input.dataset.fileFor, url: await getDownloadURL(sRef), name: file.name });
+                }
             }
+
+            await setDoc(doc(db, "briefings", draftId), payload);
+            alert('✅ Enviado!');
+            localStorage.removeItem(`alma_data_${draftId}`);
+            localStorage.removeItem(DRAFT_KEY);
+            location.reload();
+        } catch(e) {
+            alert('❌ Erro: ' + e.message);
+            btn.disabled = false;
+            btn.textContent = 'Tentar novamente';
         }
-
-        // Salvar no Firestore
-        const docRef = doc(db, "briefings", userId);
-        await setDoc(docRef, formData, { merge: true });
-
-        alert('✅ Briefing enviado com sucesso!');
-        localStorage.removeItem('alma_draft');
-        location.reload();
-
-    } catch (error) {
-        console.error("Erro ao enviar:", error);
-        alert('❌ Erro: ' + error.message);
-        btn.disabled = false;
-        btn.textContent = 'Tentar novamente';
-    }
-}
+    });
+});
