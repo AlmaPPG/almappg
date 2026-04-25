@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlmaPPG</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Fira Sans Condensed', sans-serif; background: #f8f9fa; margin: 0; padding: 30px 20px; color: #222; }
+        .container { max-width: 850px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 0px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        
+        h1 { text-align: center; font-weight: 300; margin: 0 0 5px;letter-spacing: 0.05em; font-size: 1.6rem; }
+        .sub { text-align: center; color: #777; font-size: 0.75rem; margin-bottom: 30px; letter-spacing: 0.05em; }
+        
+        .section { margin-bottom: 24px; }
+        .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.15em; font-weight: 600; margin: 0 0 12px; color: #444; border-bottom: 2px solid #222; padding-bottom: 6px; }
+        
+        .q-block { padding: 10px 0; border-bottom: 1px solid #eee; }
+        .q-block:last-child { border-bottom: none; }
+        
+        /* Linha 1 */
+        .q-top { display: flex; align-items: center; gap: 14px; margin-bottom: 7px; }
+        .q-num { width: 24px; font-weight: 600; text-align: right; flex-shrink: 0; color: #777; font-size: 0.85rem; }
+        .q-label { width: 105px; font-size: 0.85rem; font-weight: 500; flex-shrink: 0; white-space: nowrap; }
+        .q-desc { flex: 1; min-width: 0; padding: 7px 10px; border: 1px solid #ddd; border-radius: 0px; font-size: 0.85rem; transition: border 0.2s, box-shadow 0.2s; background: #fafafa; }
+        .q-desc:focus { border-color: #222; outline: none; background: #fff; box-shadow: 0 0 0 2px rgba(0,0,0,0.05); }
+        
+        /* Linha 2 */
+        .q-bottom { display: flex; align-items: center; gap: 10px; padding-left: 20px; flex-wrap: wrap; }
+        .q-check { display: flex; align-items: center; gap: 7px; font-size: 0.8rem; cursor: pointer; white-space: nowrap; color: #555; flex-shrink: 0; }
+        .q-check input { cursor: pointer; accent-color: #222; }
+        
+        /* Área de arquivos dinâmica */
+        .file-area { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 200px; max-width: 320px; }
+        .file-row { display: flex; align-items: center; gap: 6px; }
+        .q-file { flex: 1; font-size: 0.75rem; min-width: 0; }
+        
+        .btn-add { width: 24px; height: 24px; border-radius: 50%; border: 1px solid #ccc; background: #fff; color: #555; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; line-height: 1; flex-shrink: 0; transition: all 0.2s; }
+        .btn-add:hover { background: #222; color: #fff; border-color: #222; }
+        
+        .btn-remove { width: 24px; height: 24px; border-radius: 50%; border: 1px solid #ffcccc; background: #fff; color: #d9534f; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; line-height: 1; flex-shrink: 0; transition: all 0.2s; }
+        .btn-remove:hover { background: #d9534f; color: #fff; border-color: #d9534f; }
+        
+        .btn { width: 100%; padding: 14px; background: #222; color: #fff; border: none; border-radius: 0px; cursor: pointer; margin-top: 25px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; transition: background 0.2s; }
+        .btn:hover { background: #000; }
+        .btn:disabled { background: #999; cursor: not-allowed; }
+
+        /* @media (max-width: 700px) {
+            .q-top { flex-wrap: wrap; }
+            .q-label { width: auto; }
+            .q-desc { width: 100%; margin-top: 6px; }
+            .q-bottom { padding-left: 0; gap: 12px; }
+            .file-area { max-width: 100%; min-width: auto; }
+        } */
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Briefing - embalagens</h1>
+    <p class="sub">As questões abaixo são sigilosas e servirão para estudo da embalagem bem como do material de propaganda.</p>
+
+    <form id="almaForm" enctype="multipart/form-data">
+
+        <!-- 01. Identificação -->
+        <div class="section">
+            <h2 class="section-title">01. Identificação</h2>
+            <div class="q-block"><div class="q-top"><span class="q-num">1.</span><span class="q-label">Empresa</span><input type="text" class="q-desc" name="q1_desc" placeholder="Empresa"></div></div>
+            <div class="q-block"><div class="q-top"><span class="q-num">2.</span><span class="q-label">Contato</span><input type="text" class="q-desc" name="q2_desc" placeholder="Nome..."></div></div>
+            <div class="q-block"><div class="q-top"><span class="q-num">3.</span><span class="q-label">E-mail</span><input type="text" class="q-desc" name="q3_desc" placeholder="E-mail"></div></div>
+            <div class="q-block"><div class="q-top"><span class="q-num">4.</span><span class="q-label">Whatsapp</span><input type="text" class="q-desc" name="q4_desc" placeholder="(xx)xxxx-xxxx"></div></div>
+        </div>
+
+        <!-- 02. Marca -->
+        <div class="section">
+            <h2 class="section-title">02. Marca</h2>
+            
+            <div class="q-block"><div class="q-top"><span class="q-num">5.</span><span class="q-label">Marca</span><input type="text" class="q-desc" name="q5_desc" placeholder="Descrição..."></div></div>
+            <div class="q-block"><div class="q-top"><span class="q-num">6.</span><span class="q-label">Manual da marca</span><input type="text" class="q-desc" name="q6_desc" placeholder="Caso possua, anexe abaixo."></div><div class="q-bottom"><label class="q-check"><input type="checkbox" name="q6_file_check"> Possuo o arquivo</label><div class="file-area" id="q6_area"><div class="file-row"><input type="file" class="q-file" name="q6_files_0"><button type="button" class="btn-add" onclick="addFile('q6_area')">+</button></div></div></div></div>
+            
+            
+        </div>
+
+        <!-- 03. Identidade Visual -->
+        <div class="section">
+            <h2 class="section-title">03. Identidade Visual</h2>
+            
+            <div class="q-block"><div class="q-top"><span class="q-num">7.</span><span class="q-label">Logomarca</span><input type="text" class="q-desc" name="q7_desc" placeholder="Descrição..."></div><div class="q-bottom"><label class="q-check"><input type="checkbox" name="q7_file_check"> Possuo o arquivo</label><div class="file-area" id="q7_area"><div class="file-row"><input type="file" class="q-file" name="q7_files_0"><button type="button" class="btn-add" onclick="addFile('q7_area')">+</button></div></div></div></div>
+            
+            
+        </div>
+
+        <!-- 04. Tipografia -->
+        <div class="section">
+            <h2 class="section-title">04. Tipografia</h2>
+            <div class="q-block"><div class="q-top"><span class="q-num">8.</span><span class="q-label">Fonte 1</span><input type="text" class="q-desc" name="q8_desc" placeholder="Nome da fonte"></div><div class="q-bottom"><label class="q-check"><input type="checkbox" name="q8_file_check"> Possuo o arquivo</label><div class="file-area" id="q8_area"><div class="file-row"><input type="file" class="q-file" name="q8_files_0"><button type="button" class="btn-add" onclick="addFile('q8_area')">+</button></div></div></div></div>
+            <div class="q-block"><div class="q-top"><span class="q-num">9.</span><span class="q-label">Fonte 2</span><input type="text" class="q-desc" name="q9_desc" placeholder="Nome da fonte"></div><div class="q-bottom"><label class="q-check"><input type="checkbox" name="q9_file_check"> Possuo o arquivo</label><div class="file-area" id="q9_area"><div class="file-row"><input type="file" class="q-file" name="q9_files_0"><button type="button" class="btn-add" onclick="addFile('q9_area')">+</button></div></div></div></div>
+            <div class="q-block"><div class="q-top"><span class="q-num">10.</span><span class="q-label">Fonte 3</span><input type="text" class="q-desc" name="q10_desc" placeholder="Nome da fonte"></div><div class="q-bottom"><label class="q-check"><input type="checkbox" name="q10_file_check"> Possuo o arquivo</label><div class="file-area" id="q10_area"><div class="file-row"><input type="file" class="q-file" name="q10_files_0"><button type="button" class="btn-add" onclick="addFile('q10_area')">+</button></div></div></div></div>
+            
+        </div>
+
+        <!-- 05. Cores -->
+        <div class="section">
+            <h2 class="section-title">05. Cores</h2>
+            <div class="q-block"><div class="q-top"><span class="q-num">11.</span><span class="q-label">Cor 1</span><input type="text" class="q-desc" name="q11_desc" placeholder="Pantone / CMYK / RGB"></div><div class="q-bottom"><label class="q-check"><input type="checkbox" name="q11_file_check"> Possuo o arquivo</label><div class="file-area" id="q11_area"><div class="file-row"><input type="file" class="q-file" name="q11_files_0"><button type="button" class="btn-add" onclick="addFile('q11_area')">+</button></div></div></div></div>
+            <div class="q-block"><div class="q-top"><span class="q-num">12.</span><span class="q-label">Cor 2</span><input type="text" class="q-desc" name="q12_desc" placeholder="Pantone / CMYK / RGB"></div><div class="q-bottom"><label class="q-check"><input type="checkbox" name="q12_file_check"> Possuo o arquivo</label><div class="file-area" id="q12_area"><div class="file-row"><input type="file" class="q-file" name="q12_files_0"><button type="button" class="btn-add" onclick="addFile('q12_area')">+</button></div></div></div></div>
+            <div class="q-block"><div class="q-top"><span class="q-num">13.</span><span class="q-label">Cor 3</span><input type="text" class="q-desc" name="q13_desc" placeholder="Pantone / CMYK / RGB"></div><div class="q-bottom"><label class="q-check"><input type="checkbox" name="q13_file_check"> Possuo o arquivo</label><div class="file-area" id="q13_area"><div class="file-row"><input type="file" class="q-file" name="q13_files_0"><button type="button" class="btn-add" onclick="addFile('q13_area')">+</button></div></div></div></div>
+            
+        </div>
+
+        <!-- 06. Produção -->
+        <div class="section">
+            <h2 class="section-title">06. Produção</h2>
+            <div class="q-block"><div class="q-top"><span class="q-num">14.</span><span class="q-label">Medidas (produto)</span><input type="text" class="q-desc" name="q14_desc" placeholder="Descrição..."></div><div class="q-bottom"><label class="q-check"><input type="checkbox" name="q14_file_check"> Possuo o arquivo</label><div class="file-area" id="q14_area"><div class="file-row"><input type="file" class="q-file" name="q14_files_0"><button type="button" class="btn-add" onclick="addFile('q14_area')">+</button></div></div></div></div>
+            <div class="q-block"><div class="q-top"><span class="q-num">15.</span><span class="q-label">Medidas (caixa)</span><input type="text" class="q-desc" name="q15_desc" placeholder="Descrição..."></div><div class="q-bottom"><label class="q-check"><input type="checkbox" name="q15_file_check"> Possuo o arquivo</label><div class="file-area" id="q15_area"><div class="file-row"><input type="file" class="q-file" name="q15_files_0"><button type="button" class="btn-add" onclick="addFile('q15_area')">+</button></div></div></div></div>
+            <div class="q-block"><div class="q-top"><span class="q-num">16.</span><span class="q-label">Fotografia</span><input type="text" class="q-desc" name="q16_desc" placeholder="Descrição..."></div><div class="q-bottom"><label class="q-check"><input type="checkbox" name="q16_file_check"> Possuo o arquivo</label><div class="file-area" id="q16_area"><div class="file-row"><input type="file" class="q-file" name="q16_files_0"><button type="button" class="btn-add" onclick="addFile('q16_area')">+</button></div></div></div></div>
+            <div class="q-block"><div class="q-top"><span class="q-num">17.</span><span class="q-label">Vídeo</span><input type="text" class="q-desc" name="q17_desc" placeholder="Descrição..."></div><div class="q-bottom"><label class="q-check"><input type="checkbox" name="q17_file_check"> Possuo o arquivo</label><div class="file-area" id="q17_area"><div class="file-row"><input type="file" class="q-file" name="q17_files_0"><button type="button" class="btn-add" onclick="addFile('q17_area')">+</button></div></div></div></div>
+            <div class="q-block"><div class="q-top"><span class="q-num">18.</span><span class="q-label">Áudio</span><input type="text" class="q-desc" name="q18_desc" placeholder="Descrição..."></div><div class="q-bottom"><label class="q-check"><input type="checkbox" name="q18_file_check"> Possuo o arquivo</label><div class="file-area" id="q18_area"><div class="file-row"><input type="file" class="q-file" name="q18_files_0"><button type="button" class="btn-add" onclick="addFile('q18_area')">+</button></div></div></div></div>
+        </div>
+
+        <!-- 07. Entrega -->
+        <div class="section">
+            <h2 class="section-title">07. Entrega</h2>
+            <div class="q-block"><div class="q-top"><span class="q-num">19.</span><span class="q-label">Prazos</span><input type="text" class="q-desc" name="q19_desc" placeholder="Descrição..."></div><div class="q-bottom"><label class="q-check"><input type="checkbox" name="q19_file_check"> Possuo o arquivo</label><div class="file-area" id="q19_area"><div class="file-row"><input type="file" class="q-file" name="q19_files_0"><button type="button" class="btn-add" onclick="addFile('q19_area')">+</button></div></div></div></div>
+            <div class="q-block"><div class="q-top"><span class="q-num">20.</span><span class="q-label">Budget</span><input type="text" class="q-desc" name="q20_desc" placeholder="Descrição..."></div><div class="q-bottom"><label class="q-check"><input type="checkbox" name="q20_file_check"> Possuo o arquivo</label><div class="file-area" id="q20_area"><div class="file-row"><input type="file" class="q-file" name="q20_files_0"><button type="button" class="btn-add" onclick="addFile('q20_area')">+</button></div></div></div></div>
+            <div class="q-block"><div class="q-top"><span class="q-num">21.</span><span class="q-label">Observações</span><input type="text" class="q-desc" name="q21_desc" placeholder="Descrição..."></div><div class="q-bottom"><label class="q-check"><input type="checkbox" name="q21_file_check"> Possuo o arquivo</label><div class="file-area" id="q21_area"><div class="file-row"><input type="file" class="q-file" name="q21_files_0"><button type="button" class="btn-add" onclick="addFile('q21_area')">+</button></div></div></div></div>
+        </div>
+
+        <button type="submit" class="btn">Enviar Briefing</button>
+    </form>
+</div>
+
+<script>
+    // Adicionar nova linha de arquivo
+    function addFile(areaId) {
+        const area = document.getElementById(areaId);
+        const rows = area.querySelectorAll('.file-row');
+        const idx = rows.length;
+        const qPrefix = areaId.replace('_area', '');
+        
+        const row = document.createElement('div');
+        row.className = 'file-row';
+        row.innerHTML = `
+            <input type="file" class="q-file" name="${qPrefix}_files_${idx}">
+            <button type="button" class="btn-remove" onclick="this.parentElement.remove()">×</button>
+        `;
+        area.appendChild(row);
+    }
+
+    // Envio para Google Apps Script
+    document.getElementById('almaForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btn = document.querySelector('.btn');
+        btn.textContent = 'Enviando...';
+        btn.disabled = true;
+
+        const formData = new FormData(this);
+        const dados = {};
+        for (let [k, v] of formData.entries()) dados[k] = v;
+
+        // Agrupar arquivos por questão
+        const fileInputs = this.querySelectorAll('input[type="file"]');
+        const filesByQuestion = {};
+        
+        for (let input of fileInputs) {
+            if (input.files.length > 0) {
+                const qPrefix = input.name.match(/^(q\d+)_files/)?.[1];
+                if (!qPrefix) continue;
+                if (!filesByQuestion[qPrefix]) filesByQuestion[qPrefix] = [];
+
+                for (let f of input.files) {
+                    const base64 = await new Promise(resolve => {
+                        const r = new FileReader();
+                        r.onload = () => resolve(r.result.split(',')[1]);
+                        r.readAsDataURL(f);
+                    });
+                    filesByQuestion[qPrefix].push({ name: f.name,  base64 });
+                }
+            }
+        }
+        dados.files = filesByQuestion;
+
+        try {
+            // ⚠️ SUBSTITUA PELA SUA URL DO GOOGLE APPS SCRIPT
+            const URL_GAS = 'https://script.google.com/macros/s/SEU_ID_AQUI/exec';
+            await fetch(URL_GAS, { method: 'POST', body: JSON.stringify(dados) });
+            alert('✅ Briefing enviado com sucesso!');
+            this.reset();
+            // Limpar áreas de arquivo extras
+            document.querySelectorAll('.file-area').forEach(area => {
+                const rows = area.querySelectorAll('.file-row');
+                for (let i = 1; i < rows.length; i++) rows[i].remove();
+            });
+        } catch (err) {
+            alert('❌ Erro ao enviar. Verifique o console.');
+            console.error(err);
+        } finally {
+            btn.textContent = 'Enviar Briefing';
+            btn.disabled = false;
+        }
+    });
+</script>
+
+</body>
+</html>
