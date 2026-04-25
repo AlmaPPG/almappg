@@ -1,156 +1,186 @@
 // ==========================================
-// 1. CONFIGURAÇÃO (Edite aqui!)
+// 1. CONFIGURAÇÃO DO FIREBASE (SUA PARTE)
+// ==========================================
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyCf8UPYEekSfwJkTgWTojvAvli473ip3oM",
+  authDomain: "alma-briefing.firebaseapp.com",
+  projectId: "alma-briefing",
+  storageBucket: "alma-briefing.firebasestorage.app",
+  messagingSenderId: "895086378569",
+  appId: "1:895086378569:web:ed0c1a6e34ff610ec18998",
+  measurementId: "G-N1629LM322"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+
+// Variável global para o ID do cliente (anônimo)
+let userId = null;
+
+// ==========================================
+// 2. QUESTÕES (EDITE AQUI PARA MUDAR O FORM)
 // ==========================================
 const QUESTIONS = [
     { id: 'estrategia', title: '01. Estratégia', items: [
         { id: 'q1', label: 'Público-alvo', type: 'text' },
         { id: 'q2', label: 'Objetivos', type: 'text-long' },
-        { id: 'q3', label: 'Concorrência', type: 'text' }
+        { id: 'q3', label: 'Concorrência', type: 'file' } // Exemplo com arquivo
     ]},
-    { id: 'marca', title: '02. Marca', items: [
-        { id: 'q4', label: 'Valores', type: 'text' },
-        { id: 'q5', label: 'Personalidade', type: 'text' },
-        { id: 'q6', label: 'Posicionamento', type: 'text' }
-    ]},
-    { id: 'visual', title: '03. Visual', items: [
-        { id: 'q7', label: 'Cores', type: 'text' },
-        { id: 'q8', label: 'Tipografia', type: 'text' },
-        { id: 'q9', label: 'Referências', type: 'file' } // Exemplo de módulo focado em arquivo
-    ]},
-    // ... Adicione o restante das 21 questões aqui seguindo o padrão ...
+    // Adicione mais seções aqui...
 ];
 
 // ==========================================
-// 2. RENDERIZAÇÃO
+// 3. INICIALIZAÇÃO E RENDERIZAÇÃO
 // ==========================================
-const app = document.getElementById('app');
+async function init() {
+    const btn = document.getElementById('btn-submit');
+    btn.textContent = 'Carregando...';
+    
+    try {
+        // Login Anônimo (permite salvar rascunhos sem conta)
+        const cred = await signInAnonymously(auth);
+        userId = cred.user.uid;
+        console.log("Usuário ID:", userId);
+        
+        renderForm();
+        loadDraft(); // Carrega dados salvos
+        btn.textContent = 'Enviar Briefing';
+    } catch (error) {
+        console.error("Erro Firebase:", error);
+        btn.textContent = 'Erro ao conectar';
+    }
+}
 
 function renderForm() {
+    const app = document.getElementById('app');
     app.innerHTML = '';
-    const savedData = loadDraft();
 
     QUESTIONS.forEach(section => {
-        // Título da Seção
-        const sectionTitle = document.createElement('h2');
-        sectionTitle.className = 'section-title';
-        sectionTitle.textContent = section.title;
-        app.appendChild(sectionTitle);
+        const secTitle = document.createElement('h2');
+        secTitle.className = 'section-title';
+        secTitle.textContent = section.title;
+        app.appendChild(secTitle);
 
-        // Itens da Seção
         section.items.forEach(item => {
             const card = document.createElement('div');
             card.className = 'question-card';
             
-            // Cabeçalho (Número + Label)
-            const header = document.createElement('div');
-            header.className = 'q-header';
-            header.innerHTML = `<span class="q-num">${item.id.toUpperCase()}</span><span class="q-label">${item.label}</span>`;
-            card.appendChild(header);
-
-            // Input Dinâmico
-            if (item.type === 'text') {
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.id = `input-${item.id}`;
-                input.placeholder = 'Responda brevemente...';
-                input.value = savedData[item.id] || ''; // Restaura dado salvo
-                card.appendChild(input);
-            } else if (item.type === 'text-long') {
-                const area = document.createElement('textarea');
-                area.id = `input-${item.id}`;
-                area.placeholder = 'Descreva com detalhes...';
-                area.value = savedData[item.id] || '';
-                card.appendChild(area);
-            } else if (item.type === 'file') {
-                const fileArea = document.createElement('div');
-                fileArea.className = 'file-area';
-                fileArea.innerHTML = `
-                    <div class="file-row">
-                        <input type="file" id="input-${item.id}-0">
-                        <button class="btn-icon" onclick="addFileField('${item.id}')">+</button>
-                    </div>
-                `;
-                card.appendChild(fileArea);
-            }
-
-            // Listener para Auto-Save
-            card.querySelectorAll('input, textarea').forEach(el => {
-                el.addEventListener('input', () => saveDraft());
-            });
-
+            card.innerHTML = `
+                <div class="q-header">
+                    <span class="q-num">${item.id.toUpperCase()}</span>
+                    <span class="q-label">${item.label}</span>
+                </div>
+                <div class="input-wrapper">
+                    ${item.type === 'text' ? `<input type="text" id="${item.id}" data-type="text" placeholder="Responda...">` : ''}
+                    ${item.type === 'text-long' ? `<textarea id="${item.id}" data-type="text" placeholder="Descreva..."></textarea>` : ''}
+                    ${item.type === 'file' ? `
+                        <div class="file-area" id="area-${item.id}">
+                            <div class="file-row"><input type="file" data-file-for="${item.id}"><button class="btn-icon" onclick="addFile('${item.id}')">+</button></div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
             app.appendChild(card);
         });
     });
+
+    // Auto-save ao digitar
+    document.querySelectorAll('input[type="text"], textarea').forEach(el => {
+        el.addEventListener('input', (e) => saveLocalDraft(e.target.id, e.target.value));
+    });
 }
 
 // ==========================================
-// 3. LÓGICA DE ARQUIVOS DINÂMICOS
+// 4. FUNÇÕES DE ARQUIVO
 // ==========================================
-// Torna a função global para o HTML acessar via onclick
-window.addFileField = function(questionId) {
-    const area = document.querySelector(`#input-${questionId}-0`).closest('.file-area');
-    const count = area.querySelectorAll('.file-row').length;
-    
-    const newRow = document.createElement('div');
-    newRow.className = 'file-row';
-    newRow.innerHTML = `
-        <input type="file" id="input-${questionId}-${count}">
-        <button class="btn-icon remove" onclick="this.parentElement.remove()">×</button>
-    `;
-    area.appendChild(newRow);
+window.addFile = function(qId) {
+    const area = document.getElementById(`area-${qId}`);
+    const row = document.createElement('div');
+    row.className = 'file-row';
+    row.innerHTML = `<input type="file" data-file-for="${qId}"><button class="btn-icon remove" onclick="this.parentElement.remove()">×</button>`;
+    area.appendChild(row);
 };
 
 // ==========================================
-// 4. AUTO-SAVE (LOCALSTORAGE)
+// 5. LÓGICA DE SALVAR / CARREGAR
 // ==========================================
-const DRAFT_KEY = 'alma_briefing_draft';
-
-function saveDraft() {
-    const data = {};
-    // Pega valores de texto
-    document.querySelectorAll('input[type="text"], textarea').forEach(el => {
-        data[el.id] = el.value;
-    });
-    // Nota: Arquivos não são salvos no localstorage (muito pesado), apenas textos.
-    // Para persistir arquivos no rascunho, precisaríamos de IndexedDB (mais complexo).
-    
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
-    
-    // Feedback visual
-    const msg = document.getElementById('status-msg');
-    msg.classList.add('visible');
-    setTimeout(() => msg.classList.remove('visible'), 2000);
+// Salva texto no LocalStorage (Rápido/Offline)
+function saveLocalDraft(id, value) {
+    const drafts = JSON.parse(localStorage.getItem('alma_draft') || '{}');
+    drafts[userId] = drafts[userId] || {};
+    drafts[userId][id] = value;
+    localStorage.setItem('alma_draft', JSON.stringify(drafts));
 }
 
+// Carrega texto do LocalStorage
 function loadDraft() {
-    const raw = localStorage.getItem(DRAFT_KEY);
-    return raw ? JSON.parse(raw) : {};
+    const drafts = JSON.parse(localStorage.getItem('alma_draft') || '{}');
+    const userData = drafts[userId] || {};
+    
+    Object.keys(userData).forEach(key => {
+        const el = document.getElementById(key);
+        if (el) el.value = userData[key];
+    });
 }
 
-// ==========================================
-// 5. ENVIO (Placeholder para Firebase)
-// ==========================================
+// Envia TUDO para o Firebase
 document.getElementById('btn-submit').addEventListener('click', async () => {
     const btn = document.getElementById('btn-submit');
     btn.disabled = true;
     btn.textContent = 'Enviando...';
 
-    // Coletar dados finais
-    const finalData = {};
-    document.querySelectorAll('input[type="text"], textarea').forEach(el => {
-        finalData[el.id] = el.value;
-    });
+    try {
+        const formData = {
+            timestamp: new Date().toISOString(),
+            texts: {},
+            files: []
+        };
 
-    console.log("Dados prontos para envio:", finalData);
-    // AQUI ENTRARIA A LÓGICA DO FIREBASE
-    
-    setTimeout(() => {
-        alert('Simulação: Enviado com sucesso!');
+        // 1. Coletar Textos
+        document.querySelectorAll('[data-type="text"]').forEach(el => {
+            formData.texts[el.id] = el.value;
+        });
+
+        // 2. Upload de Arquivos
+        const fileInputs = document.querySelectorAll('input[type="file"]');
+        for (const input of fileInputs) {
+            if (input.files.length > 0) {
+                const file = input.files[0];
+                const qId = input.dataset.fileFor;
+                const path = `briefings/${userId}/${qId}/${Date.now()}_${file.name}`;
+                
+                const storageRef = ref(storage, path);
+                await uploadBytes(storageRef, file);
+                const url = await getDownloadURL(storageRef);
+                
+                formData.files.push({ questionId: qId, url: url, name: file.name });
+            }
+        }
+
+        // 3. Salvar no Banco (Firestore)
+        const docRef = doc(db, "briefings", userId);
+        await setDoc(docRef, formData, { merge: true }); // Merge para não apagar se atualizar
+
+        alert('✅ Briefing enviado com sucesso!');
+        localStorage.removeItem('alma_draft'); // Limpa rascunho local
+        location.reload();
+
+    } catch (error) {
+        console.error(error);
+        alert('❌ Erro ao enviar: ' + error.message);
         btn.disabled = false;
-        btn.textContent = 'Enviar Briefing';
-        localStorage.removeItem(DRAFT_KEY); // Limpa rascunho
-    }, 1500);
+        btn.textContent = 'Tentar Novamente';
+    }
 });
 
-// Inicializa
-renderForm();
+// Iniciar
+init();
